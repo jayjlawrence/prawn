@@ -77,7 +77,7 @@ module Prawn
 
         # encode as UTF-8
         codepoints.pack("U*")
-      end
+
     end
 
     def string_to_hex(str)
