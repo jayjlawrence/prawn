@@ -26,4 +26,5 @@ require "prawn/measurements"
 require "prawn/repeater"
 require "prawn/outline"
 require "prawn/layout"
+require "prawn/forms"
 

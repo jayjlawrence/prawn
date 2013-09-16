@@ -44,7 +44,43 @@ module Prawn
         utf16
       end
 
-      def string_to_hex(str)
+      def utf16_to_utf8(str)
+        # Strip the BOM if it's present
+        str = str[2..-1] if str =~ /\A\xFE\xFF/n
+
+                                   # Build an array of code points while handling surrogate pairs
+        codepoints = []
+        hi         = nil           # for handling of surrogate pairs
+        str.unpack("n*").each do |cp|
+          if cp >= 0xd800 and cp <= 0xdbff # surrogate pairs - high surrogate
+            codepoints << 0xfffd if hi # decode error - two high surrogates mashed together
+            hi = cp & 0x3ff
+            next
+          elsif cp >= 0xdc00 and cp <= 0xdfff # surrogate pairs - low surrogate
+            if hi
+              lo = cp & 0x3ff
+              codepoints << ((hi << 10) | lo) + 0x10000
+              hi = nil
+            else # decode error - add the "unknown" character
+              codepoints << 0xfffd
+            end
+            next
+          end
+          if hi
+            # decode error - high surrogate without low surrogate
+            codepoints << 0xfffd
+            hi = nil
+          end
+          codepoints << cp
+        end
+        codepoints << 0xfffd if hi # decode error - trailing high surrogate
+
+        # encode as UTF-8
+        codepoints.pack("U*")
+      end
+    end
+
+    def string_to_hex(str)
         str.unpack("H*").first
       end
     end
