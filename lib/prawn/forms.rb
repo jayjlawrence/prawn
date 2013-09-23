@@ -31,13 +31,24 @@ module Prawn
     # Populate the form fields
     #  optional options hash to specify:
     #     :size => 12
+    #     :context => is a context for ExpressionParser (proprietary)
+    #                 n.b. because "." means a field delimiter in Acrobat I have decided to use "," in place of "."
+    #                      this means $account_data.mrn must be written $account_data,mrn
+    #                      if your authoring tool passes '.'s through as a field name value then you can keep with dot syntax
 
     def fill_form(hash={}, options={})
       options[:size] ||= 12
       specs = form_field_specs
       return unless specs
-      specs.each_pair do |name, spec|
-        value = hash[name] || spec[:default_value]
+      specs.each { |ref|
+        name=ref[0]
+        spec=ref[1]
+        if options[:context]
+          # ExpressionParser is proprietary to our code
+          value = ExpressionParser.parse_exp(options[:context], name.gsub(/(\S),(\S)/, '\1.\2'))
+        else
+          value = hash[name] || spec[:default_value]
+        end
         x = [spec[:box][0], spec[:box][2]].min
         y = [spec[:box][1], spec[:box][3]].min
 
@@ -57,7 +68,7 @@ module Prawn
         # Remove form field annotation
         spec[:refs][:acroform_fields].delete(spec[:refs][:field])
         deref(deref(spec[:refs][:page])[:Annots]).delete(spec[:refs][:field])
-      end
+      }
       nil
     end
 
@@ -73,7 +84,9 @@ module Prawn
       acro_form = deref(root[:AcroForm])
       return nil unless acro_form
       form_fields = deref(acro_form[:Fields])
-      Hash[form_fields.map do |field_ref|
+
+      retval = []
+      form_fields.map do |field_ref|
         field_dict = deref(field_ref)
         next unless deref(field_dict[:Type]) == :Annot and deref(field_dict[:Subtype]) == :Widget
         next unless deref(field_dict[:FT]) == :Tx
@@ -99,8 +112,9 @@ module Prawn
           :field => field_ref,
           :acroform_fields => form_fields,
         }
-        [name, spec]
-      end]
+        retval << [name, spec]
+      end
+      retval
     end
 
     def string_to_utf8(str)
