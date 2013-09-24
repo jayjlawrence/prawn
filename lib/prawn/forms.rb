@@ -41,6 +41,7 @@ module Prawn
     #  special values
     #   "barcode (symbology) (value)"
     #     - generates a barcode using Barby
+    #   option :barcode_xdim (is the scale factor, 1 is no change 2 is twice as big)
 
     require 'barby/outputter/pdfwriter_outputter'
     require 'barby/barcode/code_39'
@@ -48,6 +49,8 @@ module Prawn
     def fill_form(hash={}, options={})
 
       options[:size] ||= 12
+      options[:barcode_xdim] ||= 1
+
       specs = form_field_specs
       return unless specs
       specs.each { |ref|
@@ -88,7 +91,7 @@ module Prawn
               unless barcode
                 draw_text value, :at => [x, y], :size => options[:size]
               else
-                barcode.annotate_pdf(self, :x => x, :y => y, :height => h)
+                barcode.annotate_pdf(self, :x => x, :y => y, :height => h, :xdim => options[:barcode_xdim])
               end
               if options[:labels]
                 (0..options[:label_rows]-1).each { |r|
