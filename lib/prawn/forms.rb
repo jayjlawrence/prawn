@@ -35,8 +35,18 @@ module Prawn
     #                 n.b. because "." means a field delimiter in Acrobat I have decided to use "," in place of "."
     #                      this means $account_data.mrn must be written $account_data,mrn
     #                      if your authoring tool passes '.'s through as a field name value then you can keep with dot syntax
+    #     :labels => true is a quick 'n dirty label maker, put your template @ lower left corner
+    #         :label_rows, :label_cols
+    #         :label_offset_x, :label_offset_y is how many points to go over/up for each col/row
+    #  special values
+    #   "barcode (symbology) (value)"
+    #     - generates a barcode using Barby
+
+    require 'barby/outputter/pdfwriter_outputter'
+    require 'barby/barcode/code_39'
 
     def fill_form(hash={}, options={})
+
       options[:size] ||= 12
       specs = form_field_specs
       return unless specs
@@ -49,8 +59,23 @@ module Prawn
         else
           value = hash[name] || spec[:default_value]
         end
+
+        if value.start_with?('barcode')
+          vals=value.split(/ /)
+          case vals[1].downcase
+            when 'code39'
+              barcode=Barby::Code39.new(vals[2])
+            else
+              STDERR.puts "Unknown barcode symbology #{vals[1].downcase}"
+          end
+        else
+          barcode=nil
+        end
+
         x = [spec[:box][0], spec[:box][2]].min
         y = [spec[:box][1], spec[:box][3]].min
+        w = (spec[:box][0]-spec[:box][2]).abs
+        h = (spec[:box][1]-spec[:box][3]).abs
 
         # Draw the text.
         # TODO: Fill the form precisely, according to the PDF spec.  This code
@@ -58,11 +83,27 @@ module Prawn
         # Attributes like font and font size are not respected.
         saved_page_number = page_number
         go_to_page(spec[:page_number])
-        float do
-          canvas do
-            draw_text value, :at => [x, y], :size => options[:size]
+          float do
+            canvas do
+              unless barcode
+                draw_text value, :at => [x, y], :size => options[:size]
+              else
+                barcode.annotate_pdf(self, :x => x, :y => y, :height => h)
+              end
+              if options[:labels]
+                (0..options[:label_rows]-1).each { |r|
+                  (0..options[:label_columns]-1).each { |c|
+                    next if r==0 && c==0 # this is our original
+                    unless barcode
+                      draw_text value, :at => [x+options[:label_offset_x]*c, y+options[:label_offset_y]*r], :size => options[:size]
+                    else
+                      barcode.annotate_pdf(self, :x => x+options[:label_offset_x]*c, :y => y+options[:label_offset_y]*r, :height => h)
+                    end
+                  }
+                }
+              end
+            end
           end
-        end
         go_to_page(saved_page_number)
 
         # Remove form field annotation
