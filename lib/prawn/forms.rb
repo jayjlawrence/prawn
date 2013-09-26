@@ -121,7 +121,7 @@ module Prawn
                     fill_rectangle [0, h], w, h if spec[:checked]
                   when :text
                     font (spec[:font] || options[:font]), :style => spec[:font_style]
-                    font (spec[:font_size] || options[:font_size])
+                    font_size (spec[:font_size] || options[:font_size])
                     text value, :align => (spec[:align] || :left), :kerning => true, :inline_format => true, :overflow => options[:overflow], :min_font_size => options[:overflow_min_font_size]
                   else
 
