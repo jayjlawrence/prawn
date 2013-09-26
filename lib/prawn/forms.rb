@@ -29,6 +29,9 @@ module Prawn
     end
 
     # Populate the form fields
+    #  form fields are used to populate the field box content
+    #     - expression parser (enabled by context below)
+    #     - inline formats (see prawn text/inline.rb docs) like <b>, <i> and <u> are permitted
     #  optional options hash to specify:
     #     :size => 12
     #     :context => is a context for ExpressionParser (proprietary)
@@ -42,6 +45,7 @@ module Prawn
     #   "barcode (symbology) (value)"
     #     - generates a barcode using Barby
     #   option :barcode_xdim (is the scale factor, 1 is no change 2 is twice as big)
+    #   option :show_bounds => true draws a box around all field boxes
 
     require 'barby/outputter/pdfwriter_outputter'
     require 'barby/barcode/code_39'
@@ -50,7 +54,14 @@ module Prawn
 
       options[:size] ||= 12
       options[:barcode_xdim] ||= 1
+      options[:label_rows] ||= 1
+      options[:label_columns] ||= 1
+      options[:label_offset_x] ||= 0
+      options[:label_offset_y] ||= 0
 
+      font_size options[:size] ? options[:size] : 10
+
+      saved_page_number = page_number
       specs = form_field_specs
       return unless specs
       specs.each { |ref|
@@ -68,6 +79,7 @@ module Prawn
           case vals[1].downcase
             when 'code39'
               barcode=Barby::Code39.new(vals[2])
+              spec[:type] = :barcode
             else
               STDERR.puts "Unknown barcode symbology #{vals[1].downcase}"
           end
@@ -76,7 +88,7 @@ module Prawn
         end
 
         x = [spec[:box][0], spec[:box][2]].min
-        y = [spec[:box][1], spec[:box][3]].min
+        y = [spec[:box][1], spec[:box][3]].max
         w = (spec[:box][0]-spec[:box][2]).abs
         h = (spec[:box][1]-spec[:box][3]).abs
 
@@ -84,60 +96,132 @@ module Prawn
         # TODO: Fill the form precisely, according to the PDF spec.  This code
         # currently just draws text at the specified locations on each form.
         # Attributes like font and font size are not respected.
-        saved_page_number = page_number
         go_to_page(spec[:page_number])
-          float do
-            canvas do
-              unless barcode
-                draw_text value, :at => [x, y], :size => options[:size]
-              else
-                barcode.annotate_pdf(self, :x => x, :y => y, :height => h, :xdim => options[:barcode_xdim])
+
+        canvas do
+
+          (0..options[:label_rows]-1).each { |r|
+            (0..options[:label_columns]-1).each { |c|
+
+              bounding_box([x+options[:label_offset_x]*c, y+options[:label_offset_y]*r], :width => w, :height => h) do
+
+                stroke_bounds if options[:show_bounds]
+
+                case spec[:type]
+                  when :barcode
+                    barcode.annotate_pdf(self, :x => 0, :y => 0, :height => h, :xdim => options[:barcode_xdim])
+                  when :checkbox
+                    fill_color '000000'
+                    fill_rectangle [0, h], w, h if spec[:checked]
+                  when :text
+                    font spec[:font], :style => spec[:font_style] if !spec[:font].blank?
+                    font_size spec[:font_size] if spec[:font_size]
+                    text value, :align => (spec[:align] || :left), :kerning => true, :inline_format => true
+                  else
+
+                end
               end
-              if options[:labels]
-                (0..options[:label_rows]-1).each { |r|
-                  (0..options[:label_columns]-1).each { |c|
-                    next if r==0 && c==0 # this is our original
-                    unless barcode
-                      draw_text value, :at => [x+options[:label_offset_x]*c, y+options[:label_offset_y]*r], :size => options[:size]
-                    else
-                      barcode.annotate_pdf(self, :x => x+options[:label_offset_x]*c, :y => y+options[:label_offset_y]*r, :height => h)
-                    end
-                  }
-                }
-              end
-            end
-          end
-        go_to_page(saved_page_number)
+
+            }
+          }
+
+        end
 
         # Remove form field annotation
-        spec[:refs][:acroform_fields].delete(spec[:refs][:field])
-        deref(deref(spec[:refs][:page])[:Annots]).delete(spec[:refs][:field])
+        #if spec[:type] == :text
+          spec[:refs][:acroform_fields].delete(spec[:refs][:field])
+          deref(deref(spec[:refs][:page])[:Annots]).delete(spec[:refs][:field])
+        #end
       }
+
+      go_to_page(saved_page_number)
       nil
+
     end
 
     private
 
     # Return a Hash of information about form fields that may be populated using fill_form
+    # see pdf_reference_1-7.pdf section 8.6.1
+    #  form field spec
+    #    :Type == :Annot, :Subtype == :Widget
+    #    :FT == Field Type
+    #           :Tx - text field
+    #           :Btn - button like checkboxes (see Ff for type bits)
+    #    :T ==  Name
+    #    :AP == (reference)
+    #    :DA == default appearance, "/Cour 18 Tf 0 g"
+    #    :DS == default style, ie "font: Courier,monospace 18.0pt; text-align:center; color:#000000 " (rich formatting enabled)
+    #    :DV == default value content
+    #    :F  == ?, ex: 4
+    #    :Ff == 33558528
+    #    :MK == {:R=>90} for rotation
+    #    :P  == page reference
+    #    :Q  == ?, ex: 1
+    #    :RV == rendered value in xhtml
+    #    :Rect == bounding box relative to canvas
+    #    :TU == Tooltip text
+    #    :V  == value
+    #    :AS == Appearance Stream
+    #       :On | :Off for checkboxes
+
     def form_field_specs
+
       page_numbers = {}
       state.pages.each_with_index do |page, i|
         page_numbers[page.dictionary] = i+1
       end
+
       root = deref(state.store.root)
       acro_form = deref(root[:AcroForm])
       return nil unless acro_form
       form_fields = deref(acro_form[:Fields])
 
+      require 'ruby-debug'
       retval = []
       form_fields.map do |field_ref|
         field_dict = deref(field_ref)
-        next unless deref(field_dict[:Type]) == :Annot and deref(field_dict[:Subtype]) == :Widget
-        next unless deref(field_dict[:FT]) == :Tx
-        name = string_to_utf8(deref(field_dict[:T]))
+        deref(field_dict[:AP])
+        next unless field_dict[:Type] == :Annot and field_dict[:Subtype] == :Widget
+        next unless field_dict[:FT] == :Tx || field_dict[:FT] == :Btn
+
+#        name = field_dict[:T]
+        name = string_to_utf8(field_dict[:T])
+        debugger if name =='$print_page_title_lab'
         spec = {}
-        spec[:box] = deref(field_dict[:Rect])
-        spec[:default_value] = string_to_utf8(deref(field_dict[:V] || field_dict[:DV] || ""))
+        spec[:type]=:text if field_dict[:FT] == :Tx
+        # TODO - more accurate type determination based on :Ff value
+        spec[:type]=:checkbox if field_dict[:FT] == :Btn && 1
+        spec[:box] = field_dict[:Rect]
+
+        # Field type specific
+        case spec[:type]
+          when :checkbox
+            spec[:checked] = field_dict[:AS] == :On ? true : false
+          when :text
+            spec[:default_value] = field_dict[:V] || field_dict[:DV] || ""
+            # Formatting
+            #    :DS == font info, ie "font: Courier,monospace 18.0pt; text-align:center; color:#000000 "
+            format_info = field_dict[:DS]
+            if format_info =~ /font: ((italic |bold )*)\s*(\S[^, ]+)/
+              spec[:font]=$3
+              case $1
+                when 'italic '
+                  spec[:font_style] = :italic
+                when 'bold '
+                  spec[:font_style] = :bold
+                when 'italic bold '
+                  spec[:font_style] = :bold_italic
+                else
+                  spec[:font_style] = :normal
+              end
+            end
+            spec[:font_size]=$1.to_f if format_info =~ /font: .* ([\d\.]+)pt;/
+            spec[:align]=$1.to_sym if format_info =~ /text-align:(\w+)/
+          else
+            raise "unhandled spec type #{spec[:type]}"
+        end
+
         page_ref = field_dict[:P]
         unless page_ref
           # The /P (page) entry is optional, so if there's only one page, assume the first page.
@@ -156,7 +240,9 @@ module Prawn
           :field => field_ref,
           :acroform_fields => form_fields,
         }
+
         retval << [name, spec]
+
       end
       retval
     end
