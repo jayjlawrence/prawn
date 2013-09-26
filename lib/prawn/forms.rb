@@ -33,7 +33,10 @@ module Prawn
     #     - expression parser (enabled by context below)
     #     - inline formats (see prawn text/inline.rb docs) like <b>, <i> and <u> are permitted
     #  optional options hash to specify:
-    #     :size => 12
+    #     :font => Helvetica
+    #     :font_size => 12
+    #     :overflow => :expand | :shrink_to_fit | false
+    #     :overflow_min_font_size => 8
     #     :context => is a context for ExpressionParser (proprietary)
     #                 n.b. because "." means a field delimiter in Acrobat I have decided to use "," in place of "."
     #                      this means $account_data.mrn must be written $account_data,mrn
@@ -52,12 +55,15 @@ module Prawn
 
     def fill_form(hash={}, options={})
 
-      options[:size] ||= 12
+      options[:font] ||= "Helvetica"
+      options[:font_size] ||= 12
       options[:barcode_xdim] ||= 1
       options[:label_rows] ||= 1
       options[:label_columns] ||= 1
       options[:label_offset_x] ||= 0
       options[:label_offset_y] ||= 0
+      options[:overflow] ||= :expand
+      options[:overflow_min_font_size] ||= 8
 
       font_size options[:size] ? options[:size] : 10
 
@@ -114,9 +120,9 @@ module Prawn
                     fill_color '000000'
                     fill_rectangle [0, h], w, h if spec[:checked]
                   when :text
-                    font spec[:font], :style => spec[:font_style] if !spec[:font].blank?
-                    font_size spec[:font_size] if spec[:font_size]
-                    text value, :align => (spec[:align] || :left), :kerning => true, :inline_format => true
+                    font (spec[:font] || options[:font]), :style => spec[:font_style]
+                    font (spec[:font_size] || options[:font_size])
+                    text value, :align => (spec[:align] || :left), :kerning => true, :inline_format => true, :overflow => options[:overflow], :min_font_size => options[:overflow_min_font_size]
                   else
 
                 end
@@ -187,7 +193,6 @@ module Prawn
 
 #        name = field_dict[:T]
         name = string_to_utf8(field_dict[:T])
-        debugger if name =='$print_page_title_lab'
         spec = {}
         spec[:type]=:text if field_dict[:FT] == :Tx
         # TODO - more accurate type determination based on :Ff value
