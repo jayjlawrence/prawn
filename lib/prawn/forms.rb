@@ -109,7 +109,8 @@ module Prawn
           (0..options[:label_rows]-1).each { |r|
             (0..options[:label_columns]-1).each { |c|
 
-              bounding_box([x+options[:label_offset_x]*c, y+options[:label_offset_y]*r], :width => w, :height => h) do
+              # Do not include height to make bounding box stretchy
+              bounding_box([x+options[:label_offset_x]*c, y+options[:label_offset_y]*r], :width => w) do
 
                 stroke_bounds if options[:show_bounds]
 
