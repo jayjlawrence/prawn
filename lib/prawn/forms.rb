@@ -184,7 +184,6 @@ module Prawn
       return nil unless acro_form
       form_fields = deref(acro_form[:Fields])
 
-      require 'ruby-debug'
       retval = []
       form_fields.map do |field_ref|
         field_dict = deref(field_ref)
