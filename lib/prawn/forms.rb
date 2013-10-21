@@ -82,15 +82,15 @@ module Prawn
 
         if value.start_with?('barcode')
           vals=value.split(/ /)
-          case vals[1].downcase
+          if vals[2] != nil && vals[2] != ''
+            case vals[1].downcase
             when 'code39'
               barcode=Barby::Code39.new(vals[2])
               spec[:type] = :barcode
             else
               STDERR.puts "Unknown barcode symbology #{vals[1].downcase}"
+            end
           end
-        else
-          barcode=nil
         end
 
         x = [spec[:box][0], spec[:box][2]].min
@@ -116,7 +116,7 @@ module Prawn
 
                 case spec[:type]
                   when :barcode
-                    barcode.annotate_pdf(self, :x => 0, :y => 0, :height => h, :xdim => options[:barcode_xdim])
+                    barcode.annotate_pdf(self, :x => 0, :y => -h, :height => h, :xdim => options[:barcode_xdim])
                   when :checkbox
                     fill_color '000000'
                     fill_rectangle [0, h], w, h if spec[:checked]
