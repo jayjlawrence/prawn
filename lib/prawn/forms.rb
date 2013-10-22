@@ -119,7 +119,7 @@ module Prawn
                     barcode.annotate_pdf(self, :x => 0, :y => -h, :height => h, :xdim => options[:barcode_xdim])
                   when :checkbox
                     fill_color '000000'
-                    fill_rectangle [0, h], w, h if spec[:checked]
+                    fill_rectangle [0, 0], w, h if spec[:checked]
                   when :text
                     font (spec[:font] || options[:font]), :style => spec[:font_style]
                     font_size (spec[:font_size] || options[:font_size])
