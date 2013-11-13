@@ -176,7 +176,7 @@ module Prawn
 
       page_numbers = {}
       state.pages.each_with_index do |page, i|
-        page_numbers[page.dictionary] = i+1
+        page_numbers[page.dictionary.object_id] = i+1
       end
 
       root = deref(state.store.root)
@@ -188,10 +188,11 @@ module Prawn
       form_fields.map do |field_ref|
         field_dict = deref(field_ref)
         deref(field_dict[:AP])
+        # Supported :Type
         next unless field_dict[:Type] == :Annot and field_dict[:Subtype] == :Widget
+        # Supported :FT
         next unless field_dict[:FT] == :Tx || field_dict[:FT] == :Btn
 
-#        name = field_dict[:T]
         name = string_to_utf8(field_dict[:T])
         spec = {}
         spec[:type]=:text if field_dict[:FT] == :Tx
@@ -234,12 +235,13 @@ module Prawn
           # which page, skip the annotation.
           # XXX - Is this the correct behaviour?
           if page_numbers.length == 1
-            page_ref = page_numbers.keys.first
+            page_ref = state.pages.first.dictionary
           else
+            STDERR.warn "Missing page reference for acroform field #{name}"
             next
           end
         end
-        spec[:page_number] = page_numbers[page_ref]
+        spec[:page_number] = page_numbers[page_ref.object_id]
         spec[:refs] = {
           :page => page_ref,
           :field => field_ref,
