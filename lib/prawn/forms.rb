@@ -55,15 +55,16 @@ module Prawn
 
     def fill_form(hash={}, options={})
 
-      options[:font] ||= "Helvetica"
-      options[:font_size] ||= 12
-      options[:barcode_xdim] ||= 1
-      options[:label_rows] ||= 1
-      options[:label_columns] ||= 1
-      options[:label_offset_x] ||= 0
-      options[:label_offset_y] ||= 0
-      options[:overflow] ||= :expand
+      options[:font]                   ||= "Helvetica"
+      options[:font_size]              ||= 12
+      options[:barcode_xdim]           ||= 1
+      options[:label_rows]             ||= 1
+      options[:label_columns]          ||= 1
+      options[:label_offset_x]         ||= 0
+      options[:label_offset_y]         ||= 0
+      options[:overflow]               ||= :expand
       options[:overflow_min_font_size] ||= 8
+      options[:pages]                  ||= 1
 
       font_size options[:size] ? options[:size] : 10
 
@@ -71,11 +72,14 @@ module Prawn
       specs = form_field_specs
       return unless specs
       specs.each { |ref|
+      (1..options[:pages]).each { |page|
         name=ref[0]
         spec=ref[1]
         if options[:context]
+          options[:context][:vars]["_fill_form_page"]=page if options[:context][:vars]
           # ExpressionParser is proprietary to our code
           value = ExpressionParser.parse_exp(options[:context], name.gsub(/(\S),(\S)/, '\1.\2'))
+          options[:context][:vars].delete('_fill_form_page') if options[:context][:vars]
         else
           value = hash[name] || spec[:default_value]
         end
@@ -102,7 +106,8 @@ module Prawn
         # TODO: Fill the form precisely, according to the PDF spec.  This code
         # currently just draws text at the specified locations on each form.
         # Attributes like font and font size are not respected.
-        go_to_page(spec[:page_number])
+        go_to_page(page)
+        #go_to_page(spec[:page_number])
 
         canvas do
 
@@ -134,13 +139,17 @@ module Prawn
 
         end
 
-        # Remove form field annotation
-        #if spec[:type] == :text
-          spec[:refs][:acroform_fields].delete(spec[:refs][:field])
-          deref(deref(spec[:refs][:page])[:Annots]).delete(spec[:refs][:field])
-        #end
       }
 
+        # Remove form field annotation
+        #if spec[:type] == :text
+
+        # TODO - Deletion of acroform_fields does not work when using multiple copies of a page ...
+#          spec[:refs][:acroform_fields].delete(spec[:refs][:field])
+#          deref(deref(spec[:refs][:page])[:Annots]).delete(spec[:refs][:field])
+        #end
+
+      }
       go_to_page(saved_page_number)
       nil
 
