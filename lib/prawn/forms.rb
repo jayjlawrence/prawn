@@ -79,6 +79,12 @@ module Prawn
           options[:context][:vars]["_fill_form_page"]=page if options[:context][:vars]
           # ExpressionParser is proprietary to our code
           value = ExpressionParser.parse_exp(options[:context], name.gsub(/(\S),(\S)/, '\1.\2'))
+          if value =~ /^label\s+(.*)/
+            value=$1
+            is_label=true
+          else
+            is_label=false
+          end
           options[:context][:vars].delete('_fill_form_page') if options[:context][:vars]
         else
           value = hash[name] || spec[:default_value]
@@ -133,8 +139,9 @@ module Prawn
 
                 end
               end
-
+              break unless is_label
             }
+            break unless is_label
           }
 
         end
