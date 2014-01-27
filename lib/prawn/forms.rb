@@ -127,7 +127,16 @@ module Prawn
 
                 case spec[:type]
                   when :barcode
-                    barcode.annotate_pdf(self, :x => 0, :y => -h, :height => h, :xdim => options[:barcode_xdim])
+                    angle=0
+                    case value
+                      when /^barcode-l/
+                        angle=90
+                      when /^barcode-r/
+                        angle=270
+                      end
+                    rotate(angle, :origin => [0,-h]) do
+                      barcode.annotate_pdf(self, :x => 0, :y => -h, :height => h, :xdim => options[:barcode_xdim])
+                    end
                   when :checkbox
                     fill_color '000000'
                     fill_rectangle [0, 0], w, h if spec[:checked]
