@@ -233,8 +233,8 @@ module Prawn
             spec[:default_value] = field_dict[:V] || field_dict[:DV] || ""
             # Formatting
             #    :DS == font info, ie "font: Courier,monospace 18.0pt; text-align:center; color:#000000 "
-            format_info = field_dict[:DS]
-            if format_info =~ /font: ((italic |bold )*)\s*(\S[^, ]+)/
+            spec[:format_info] = field_dict[:DS].data.to_s
+            if spec[:format_info] =~ /font: ((italic |bold )*)\s*(\S[^, ]+)/
               spec[:font]=$3
               case $1
                 when 'italic '
@@ -247,8 +247,8 @@ module Prawn
                   spec[:font_style] = :normal
               end
             end
-            spec[:font_size]=$1.to_f if format_info =~ /font: .* ([\d\.]+)pt;/
-            spec[:align]=$1.to_sym if format_info =~ /text-align:(\w+)/
+            spec[:font_size]=$1.to_f if spec[:format_info] =~ /font: .* ([\d\.]+)pt;/
+            spec[:align]=$1.to_sym if spec[:format_info] =~ /text-align:(\w+)/
           else
             raise "unhandled spec type #{spec[:type]}"
         end
