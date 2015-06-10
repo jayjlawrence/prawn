@@ -12,7 +12,7 @@ require 'afm'
 module Prawn
   class Font
     class AFM < Font
-      BUILT_INS = %w[ Courier Helvetica Times-Roman Symbol ZapfDingbats
+      BUILT_INS = %w[ Courier Helvetica Times Times-Roman Symbol ZapfDingbats
                       Courier-Bold Courier-Oblique Courier-BoldOblique
                       Times-Bold Times-Italic Times-BoldItalic
                       Helvetica-Bold Helvetica-Oblique Helvetica-BoldOblique ]
