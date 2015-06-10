@@ -73,7 +73,7 @@ module Prawn
       return unless specs
       specs.each { |ref|
       (1..options[:pages]).each { |page|
-        name=ref[0]
+        name=ref[0].force_encoding('ISO-8859-1') if ref[0].encoding.to_s == 'ASCII-8BIT'
         spec=ref[1]
         if options[:context]
           options[:context][:vars]["_fill_form_page"]=page if options[:context][:vars]
@@ -143,7 +143,7 @@ module Prawn
                   when :text
                     font (spec[:font] || options[:font]), :style => spec[:font_style]
                     font_size (spec[:font_size] || options[:font_size])
-                    text value, :align => (spec[:align] || :left), :kerning => true, :inline_format => true, :overflow => options[:overflow], :min_font_size => options[:overflow_min_font_size]
+                    text value.encode('UTF-8'), :align => (spec[:align] || :left), :kerning => true, :inline_format => true, :overflow => options[:overflow], :min_font_size => options[:overflow_min_font_size]
                   else
 
                 end
