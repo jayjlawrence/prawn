@@ -78,7 +78,7 @@ module Prawn
         if options[:context]
           options[:context][:vars]["_fill_form_page"]=page if options[:context][:vars]
           # ExpressionParser is proprietary to our code
-          value = ExpressionParser.parse_exp(options[:context], name.gsub(/(\S),(\S)/, '\1.\2'))
+          value = ExpressionParser.parse_exp(options[:context], name.gsub(/(\S),/, '\1.'))
           if value =~ /^label\s+(.*)/
             value=$1
             is_label=true
