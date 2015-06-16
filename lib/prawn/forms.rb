@@ -74,7 +74,7 @@ module Prawn
       return unless specs
       specs.each { |ref|
       (1..options[:pages]).each { |page|
-        name=ref[0].force_encoding('ISO-8859-1') if ref[0].encoding.to_s == 'ASCII-8BIT'
+        name=ref[0].encoding.to_s == 'ASCII-8BIT' ? ref[0].force_encoding('ISO-8859-1') : ref[0]
         spec=ref[1]
         if options[:context]
           options[:context][:vars]["_fill_form_page"]=page if options[:context][:vars]
