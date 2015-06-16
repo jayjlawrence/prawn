@@ -236,8 +236,8 @@ module Prawn
             # Formatting
             #    :DS == font info, ie "font: Courier,monospace 18.0pt; text-align:center; color:#000000 "
             spec[:format_info] = field_dict[:DS].respond_to?(:data) ? field_dict[:DS].data.to_s : field_dict[:DS].to_s
-            if spec[:format_info] =~ /font: ((italic |bold )*)\s*(\S[^, ]+)/
-              spec[:font]=$3
+            if spec[:format_info] =~ /font: ((italic |bold )*)\s*('([^']+)'|(\S[^, ]+))/
+              spec[:font]=$4
               case $1
                 when 'italic '
                   spec[:font_style] = :italic
