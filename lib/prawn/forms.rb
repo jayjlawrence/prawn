@@ -21,6 +21,7 @@ module Prawn
   #   end
   #
   module Forms
+    TRACE=false
     # Return a list of form field names that may be populated using fill_form
     def form_fields
       specs = form_field_specs
@@ -79,6 +80,7 @@ module Prawn
           options[:context][:vars]["_fill_form_page"]=page if options[:context][:vars]
           # ExpressionParser is proprietary to our code
           value = ExpressionParser.parse_exp(options[:context], name.gsub(/(\S),/, '\1.'))
+          FlowMachineLogger.info("#{name} = #{value}") if TRACE
           if value =~ /^label\s+(.*)/
             value=$1
             is_label=true
@@ -262,7 +264,7 @@ module Prawn
           if page_numbers.length == 1
             page_ref = state.pages.first.dictionary
           else
-            STDERR.warn "Missing page reference for acroform field #{name}"
+            STDERR.puts "Missing page reference for acroform field #{name}"
             next
           end
         end
